@@ -7,17 +7,18 @@ const measuresData = require('../../index.js');
 
 function checkUrl(s) {
   return rp({method: 'HEAD', uri: s.url})
-    .then(function (body) {
-        let valid = /4\d\d/.test(body.statusCode) === false;
-        return ({measureId: s.measureId,
-          submissionMethod: s.url,
-          success: valid,
-          httpStatus: body.statusCode});
+    .then(body => {
+      let valid = /4\d\d/.test(body.statusCode) === false;
+      return ({
+        measureId: s.measureId,
+        submissionMethod: s.url,
+        success: valid,
+        httpStatus: body.statusCode
+      });
     });
 };
 
 describe('measures specification', function() {
-
   it('should have valid specification links', function(done) {
     this.timeout(300000); // 5 minutes timeout.
     let specs = [];
@@ -30,18 +31,16 @@ describe('measures specification', function() {
           let url = s.measureSpecification[key];
           specs.push({measureId: s.measureId, url: url});
         });
-    });
+      });
 
     Promise.map(specs, s => checkUrl(s))
-    .then(results => {
-      let failuers = results.filter(r => !r.success);
-      if (failuers.length > 0) {
-        console.log(failuers);
-      }
-      assert.equal(0, failuers.length, 'One or more measure specifications link is invalid');
-      done();
-    });
-
-
+      .then(results => {
+        let failuers = results.filter(r => !r.success);
+        if (failuers.length > 0) {
+          console.log(failuers);
+        }
+        assert.equal(0, failuers.length, 'One or more measure specifications link is invalid');
+        done();
+      });
   });
 });
