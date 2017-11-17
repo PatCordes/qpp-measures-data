@@ -20,7 +20,6 @@ function checkUrl(s) {
 
 describe('measures specification', function() {
   it('should have valid specification links', function(done) {
-    this.timeout(300000); // 5 minutes timeout.
     let specs = [];
     let measures = measuresData.getMeasuresData();
     measures
