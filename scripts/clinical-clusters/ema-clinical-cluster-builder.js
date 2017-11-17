@@ -17,18 +17,18 @@
  *  }
  * ]
  */
-var fs = require('fs');
-var _ = require('lodash');
-var parse = require('csv-parse/lib/sync');
+const fs = require('fs');
+const _ = require('lodash');
+const parse = require('csv-parse/lib/sync');
 
-var MAX_SPECIALITY_SET_SIZE = 6;
-var SUPPORTED_PERFORMANCE_YEARS = [2017];
+const MAX_SPECIALITY_SET_SIZE = 6;
+const SUPPORTED_PERFORMANCE_YEARS = [2017];
 
-var measuresJson = '';
-var claimsClusterFilePath = process.argv[2];
-var registryClusterFilePath = process.argv[3];
+let measuresJson = '';
+const claimsClusterFilePath = process.argv[2];
+const registryClusterFilePath = process.argv[3];
 
-var specialClusterRelations = {
+const specialClusterRelations = {
   registry: [
     {measureId: '047', optionals: []},
     {measureId: '110', optionals: []},
@@ -44,8 +44,10 @@ var specialClusterRelations = {
     {measureId: '444', optionals: ['398']},
     {measureId: '024', optionals: ['418']},
     {measureId: '418', optionals: ['024']},
+    {measureId: '005', optionals: ['008']},
     {measureId: '006', optionals: ['118', '007']},
     {measureId: '007', optionals: ['118', '006']},
+    {measureId: '008', optionals: ['005']},
     {measureId: '118', optionals: ['007', '006']},
     {measureId: '426', optionals: ['427']},
     {measureId: '427', optionals: ['426']},
@@ -86,11 +88,11 @@ function curate(clusterMap, relations) {
 }
 
 function populateClinicalClusters(clusterMap, measures, submissionMethod, filePath) {
-  let contents = fs.readFileSync(filePath, 'utf8');
-  let rows = parse(contents, {columns: true});
+  const contents = fs.readFileSync(filePath, 'utf8');
+  const rows = parse(contents, {columns: true});
 
   // group the measures by cluster
-  let byClusterName = _.chain(rows)
+  const byClusterName = _.chain(rows)
     .map(r => ({clusterName: _.camelCase(r['Title']), measureId: _.padStart(r['Quality ID'], 3, '0')}))
     .groupBy('clusterName')
     .map((val, key) => ({name: key, measureIds: val.map(m => m.measureId)}))
@@ -99,8 +101,8 @@ function populateClinicalClusters(clusterMap, measures, submissionMethod, filePa
     // read the grouped measures and populate the cluster name
   byClusterName.forEach(clinicalCluster => {
     clinicalCluster.measureIds.forEach(measureId => {
-      let measure = measures.find(m => m.measureId === measureId);
-      let cluster = clusterMap.get(measureId) || {
+      const measure = measures.find(m => m.measureId === measureId);
+      const cluster = clusterMap.get(measureId) || {
         measureId: measureId,
         submissionMethod: submissionMethod,
         firstPerformanceYear: measure.firstPerformanceYear,
@@ -115,7 +117,7 @@ function populateClinicalClusters(clusterMap, measures, submissionMethod, filePa
 
 function populateSpecialtySet(clusterMap, measures, submissionMethod) {
   // group the measures of submissionMethod by specialty set
-  let bySpecialty = _.chain(measures)
+  const bySpecialty = _.chain(measures)
     .filter(m => m.category === 'quality')
     .filter(m => m.submissionMethods && m.submissionMethods.indexOf(submissionMethod) > -1)
     .flatMap(m => m.measureSets.map(specialty => Object.assign({specialty: specialty}, m)))
@@ -127,8 +129,8 @@ function populateSpecialtySet(clusterMap, measures, submissionMethod) {
   bySpecialty.forEach(specialty => {
     if (specialty.measureIds.length < MAX_SPECIALITY_SET_SIZE) {
       specialty.measureIds.forEach(measureId => {
-        let measure = measures.find(m => m.measureId === measureId);
-        let cluster = clusterMap.get(measureId) || {
+        const measure = measures.find(m => m.measureId === measureId);
+        const cluster = clusterMap.get(measureId) || {
           measureId: measureId,
           submissionMethod: submissionMethod,
           firstPerformanceYear: measure.firstPerformanceYear,
@@ -143,13 +145,13 @@ function populateSpecialtySet(clusterMap, measures, submissionMethod) {
 }
 
 function generateEMAClusters(allMeasures) {
-  let measures = allMeasures.filter(m =>
+  const measures = allMeasures.filter(m =>
     (SUPPORTED_PERFORMANCE_YEARS.indexOf(m.firstPerformanceYear) > -1) &&
         (m.lastPerformanceYear == null || SUPPORTED_PERFORMANCE_YEARS.indexOf(m.lastPerformanceYear) > -1)
   );
 
-  let claimsClusterMap = new Map();
-  let registryClusterMap = new Map();
+  const claimsClusterMap = new Map();
+  const registryClusterMap = new Map();
 
   // set the claims and registry specialty set
   populateSpecialtySet(claimsClusterMap, measures, 'claims');
@@ -161,7 +163,7 @@ function generateEMAClusters(allMeasures) {
   curate(registryClusterMap, specialClusterRelations.registry);
   curate(claimsClusterMap, specialClusterRelations.claims);
 
-  let emaClusters = [];
+  const emaClusters = [];
 
   claimsClusterMap
     .forEach(v => emaClusters.push(v));
@@ -172,9 +174,9 @@ function generateEMAClusters(allMeasures) {
   // add the current measure to the cluster
   emaClusters.forEach(ema => {
     if (ema.clinicalClusters) {
-      let clinicalClusters = [];
+      const clinicalClusters = [];
       ema.clinicalClusters.forEach(cc => {
-        let cluster = Object.assign({}, cc, {measureIds: cc.measureIds.concat([ema.measureId])});
+        const cluster = Object.assign({}, cc, {measureIds: cc.measureIds.concat([ema.measureId])});
         clinicalClusters.push(cluster);
         cluster.measureIds = _.uniq(cluster.measureIds);
       });
@@ -188,7 +190,7 @@ function generateEMAClusters(allMeasures) {
 
 process.stdin.setEncoding('utf8');
 process.stdin.on('readable', () => {
-  var chunk = process.stdin.read();
+  const chunk = process.stdin.read();
   if (chunk !== null) {
     measuresJson += chunk;
   }
