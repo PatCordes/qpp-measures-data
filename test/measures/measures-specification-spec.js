@@ -8,39 +8,44 @@ const measuresData = require('../../index.js');
 function checkUrl(s) {
   return rp({method: 'HEAD', uri: s.url})
     .then(body => {
-      const valid = /4\d\d/.test(body.statusCode) === false;
       return ({
         measureId: s.measureId,
         submissionMethod: s.url,
-        success: valid,
+        success: true,
+        httpStatus: body.statusCode
+      });
+    })
+    .catch(body => {
+      return ({
+        measureId: s.measureId,
+        submissionMethod: s.url,
+        success: false,
         httpStatus: body.statusCode
       });
     });
 };
 
 describe('measures specification', function() {
-  it('should have valid specification links', function(done) {
-    this.timeout(120000); // 2 minutes timeout.
+  it('should have valid specification links', function() {
+    this.timeout(20000); // 20 seconds timeout.
     const specs = [];
     const measures = measuresData.getMeasuresData();
     measures
       .map(m => ({measureId: m.measureId, measureSpecification: m.measureSpecification}))
       .filter(s => !!s.measureSpecification)
       .forEach(s => {
-        Object.keys(s.measureSpecification).forEach(key => {
-          const url = s.measureSpecification[key];
+        Object.values(s.measureSpecification).forEach(url => {
           specs.push({measureId: s.measureId, url: url});
         });
       });
 
-    Promise.map(specs, s => checkUrl(s))
+    return Promise.map(specs, s => checkUrl(s))
       .then(results => {
-        const failuers = results.filter(r => !r.success);
-        if (failuers.length > 0) {
-          console.log(failuers);
+        const failures = results.filter(r => !r.success);
+        if (failures.length > 0) {
+          console.log(failures);
         }
-        assert.equal(0, failuers.length, 'One or more measure specifications link is invalid');
-        done();
+        assert.equal(0, failures.length, 'One or more measure specifications link is invalid');
       });
   });
 });
